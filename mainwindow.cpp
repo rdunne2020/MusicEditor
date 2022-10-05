@@ -2,21 +2,76 @@
 #include "./ui_mainwindow.h"
 #include <iostream>
 #include <QDir>
+#include <QFile>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->saveButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
-    ui->saveAsButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
-    ui->manualButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    //ui->saveButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    //ui->saveAsButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    //ui->manualButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    connect(ui->saveButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
+    connect(ui->saveAsButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
     connect(this, &MainWindow::send_songs, this, &MainWindow::fill_fileList);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::readFileData(const QStringList &rFileList)
+{
+    // Allocate the vector of byte arrays
+    _songData.clear();
+    _songData.resize(rFileList.size());
+    for(int i = 0; i < rFileList.size();  ++i)
+    {
+        // TODO: Clean up path generation, has to be a better way than using + operators
+        QString songName = _songDir.absolutePath() + "/" + rFileList[i] + "." + _fileExt;
+        QFile songData(songName);
+        songData.open(QIODevice::ReadOnly);
+        //std::cout << "Reading in " << rFileList[i].toStdString() << std::endl;
+        std::cout << "Reading in " << songName.toStdString() << std::endl;
+        while(!songData.atEnd())
+        {
+            _songData[i].append(songData.read(sizeof(char)));
+        }
+        std::cout << "Read in " << _songData[i].size() << " bytes for: " << rFileList[i].toStdString() << std::endl;
+    }
+}
+
+/*****************************************
+ * Writes files
+ * Loops thru all the files, writes the old data to the new file names
+*****************************************/
+void MainWindow::writeNewFiles()
+{
+    // TODO: Error handle the directory?
+    if(_filesInDir.size() < 1 || ui->formattedNames->count() < 1)
+    {
+        std::cout << "Open Directory With Music Files in it First" << std::endl;
+    }
+    else
+    {
+        std::cout << "Saving new songs to : " << _songDir.absolutePath().toStdString() << std::endl;
+        for(int i = 0; i < ui->formattedNames->count(); ++i)
+        {
+            // TODO: Clean up path generation, has to be a better way than using + operators
+            QString songName = _songDir.absolutePath() + "/" + ui->formattedNames->item(i)->text() + "." + _fileExt;
+            std::cout << songName.toStdString() << std::endl;
+            QFile newSong(songName);
+            if (!newSong.open(QIODevice::WriteOnly | QIODevice::Text))
+            {
+                return;
+            }
+            qint64 numBytesWritten = newSong.write(_songData[i]);
+            std::cout << "Wrote " << numBytesWritten << " bytes to " << songName.toStdString();
+        }
+    }
+
 }
 
 void MainWindow::editTitle(QString &rSongName, int trackNum, bool continuous)
@@ -92,6 +147,7 @@ void MainWindow::on_actionOpen_Folder_triggered()
     QStringList audio_file_filter;
     audio_file_filter << "*.mp3" << "*.alac" << "*.flac" << "*.wav" << "*.m4a";
     QStringList files_in_dir = directory_selected.entryList(audio_file_filter, QDir::Files);
+    _songDir = directory_selected;
     for(auto& rFile : files_in_dir)
     {
         QStringList tmpSplit = rFile.split(".");
@@ -100,6 +156,8 @@ void MainWindow::on_actionOpen_Folder_triggered()
         std::cout << rFile.toStdString() << std::endl;
     }
     _filesInDir = files_in_dir;
+    // Now that we have read in all the files, load their data into memory
+    readFileData(_filesInDir);
     emit(send_songs(_filesInDir));
 }
 

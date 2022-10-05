@@ -20,18 +20,24 @@ public:
     void editTitle(QString& rSongName, int trackNum, bool continuous);
     void parseFiles(QStringList &rFileList);
 
+    void readFileData(const QStringList& rFileList);
+
 private slots:
     void on_actionOpen_Folder_triggered();
     void fill_fileList(QStringList& rFilesForList);
 
     void on_actionRefresh_triggered();
 
+    void writeNewFiles();
+
 signals:
     void send_songs(QStringList& rSelectedSongs);
 
 private:
     Ui::MainWindow *ui;
+    QDir _songDir;
     QStringList _filesInDir;
     QString _fileExt = "";
+    std::vector<QByteArray> _songData;
 };
 #endif // MAINWINDOW_H
