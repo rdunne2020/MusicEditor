@@ -1,3 +1,9 @@
+/****************************************************************************
+ * Music Editor: Let's see if this works
+ * TODO:
+ * Add a logger
+****************************************************************************/
+
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <iostream>
@@ -9,9 +15,9 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    //ui->saveButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
-    //ui->saveAsButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
-    //ui->manualButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    ui->saveButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    ui->saveAsButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    ui->manualButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
     connect(ui->saveButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
     connect(ui->saveAsButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
     connect(this, &MainWindow::send_songs, this, &MainWindow::fill_fileList);
@@ -27,6 +33,8 @@ void MainWindow::readFileData(const QStringList &rFileList)
     // Allocate the vector of byte arrays
     _songData.clear();
     _songData.resize(rFileList.size());
+    // TODO: Under no circumstances can I read the whole directory into memory at once, it's a recipe for disaster
+    // You should read then write only after the program is certain you want to be writing the bytes
     for(int i = 0; i < rFileList.size();  ++i)
     {
         // TODO: Clean up path generation, has to be a better way than using + operators
@@ -46,32 +54,53 @@ void MainWindow::readFileData(const QStringList &rFileList)
 /*****************************************
  * Writes files
  * Loops thru all the files, writes the old data to the new file names
+ * Returns the number of bytes written, zero means an error
 *****************************************/
-void MainWindow::writeNewFiles()
+unsigned long MainWindow::writeNewFiles()
 {
     // TODO: Error handle the directory?
     if(_filesInDir.size() < 1 || ui->formattedNames->count() < 1)
     {
         std::cout << "Open Directory With Music Files in it First" << std::endl;
+        return 0;
     }
     else
     {
-        std::cout << "Saving new songs to : " << _songDir.absolutePath().toStdString() << std::endl;
+        QString saveDir = _songDir.absolutePath();
+        QString buttonText = static_cast<QPushButton*>(QObject::sender())->text();
+        bool pressedSaveAs = (buttonText == "Save As");
+
+        // If save as was activated, open a dialog to select a new directory
+        if(pressedSaveAs)
+        {
+            QString new_directory_selected = QFileDialog::getExistingDirectory(this, "Save New Files As", "./", QFileDialog::Option::ShowDirsOnly);
+            if(new_directory_selected.isEmpty())
+            {
+                std::cout << "Select a directory to save your files to" << std::endl;
+                return 0;
+            }
+            saveDir = new_directory_selected;
+        }
+
+        std::cout << "Saving new songs to : " << saveDir.toStdString() << std::endl;
+        unsigned long totalNumMbWritten = 0;
         for(int i = 0; i < ui->formattedNames->count(); ++i)
         {
             // TODO: Clean up path generation, has to be a better way than using + operators
-            QString songName = _songDir.absolutePath() + "/" + ui->formattedNames->item(i)->text() + "." + _fileExt;
+            QString songName = saveDir + "/" + ui->formattedNames->item(i)->text() + "." + _fileExt;
             std::cout << songName.toStdString() << std::endl;
             QFile newSong(songName);
+            // Song Failed to write, print out the failure, don't stop the rest of it
             if (!newSong.open(QIODevice::WriteOnly | QIODevice::Text))
             {
-                return;
+                std::cerr << "Couldn't write new file: " << songName.toStdString() << std::endl;
             }
             qint64 numBytesWritten = newSong.write(_songData[i]);
             std::cout << "Wrote " << numBytesWritten << " bytes to " << songName.toStdString();
+            totalNumMbWritten += (static_cast<double>(numBytesWritten) / 1000000.0);
         }
+        return totalNumMbWritten;
     }
-
 }
 
 void MainWindow::editTitle(QString &rSongName, int trackNum, bool continuous)
@@ -87,6 +116,7 @@ void MainWindow::editTitle(QString &rSongName, int trackNum, bool continuous)
     int word_count = 0;
     for(auto& word : wordsInTitle)
     {
+        // TODO: Clean this up
         QRegularExpression badUppercase("(^a$|^an$|^and$|^but$|^for$|^to$|^at$|^by$)", QRegularExpression::CaseInsensitiveOption);
         QRegularExpressionMatch toLowercase = badUppercase.match(word);
         if(toLowercase.hasMatch())
@@ -109,7 +139,8 @@ void MainWindow::editTitle(QString &rSongName, int trackNum, bool continuous)
             alreadyHasArrow = true;
         }
     }
-    QString wc = QString::fromStdString(std::to_string(trackNum));
+    // Increase the trackNum by one to start from 1
+    QString wc = QString::fromStdString(std::to_string(trackNum+1));
     wordsInTitle.prepend(wc);
 
     if(continuous && !alreadyHasArrow)
