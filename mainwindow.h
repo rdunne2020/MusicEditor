@@ -28,7 +28,7 @@ private slots:
 
     void on_actionRefresh_triggered();
 
-    void writeNewFiles();
+    unsigned long writeNewFiles();
 
 signals:
     void send_songs(QStringList& rSelectedSongs);
