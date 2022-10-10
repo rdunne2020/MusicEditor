@@ -6,9 +6,11 @@
 
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "editor.h"
 #include <iostream>
 #include <QDir>
 #include <QFile>
+#include <memory>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -20,12 +22,36 @@ MainWindow::MainWindow(QWidget *parent)
     ui->manualButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
     connect(ui->saveButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
     connect(ui->saveAsButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
+    connect(ui->manualButton, &QPushButton::pressed, this, &MainWindow::launchManualEditor);
     connect(this, &MainWindow::send_songs, this, &MainWindow::fill_fileList);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::launchManualEditor()
+{
+    if(_filesInDir.count() < 1)
+    {
+        std::cout << "Please open a directory with songs in it first" << std::endl;
+    }
+    else
+    {
+        std::unique_ptr<Editor> pManualEditor = std::make_unique<Editor>();
+        // TODO: Make this pass the formatted names, not the ones from the dir, they are wrong
+        pManualEditor->setupList(_filesInDir);
+        connect(pManualEditor.get(), &Editor::sendDataToMain, this, &MainWindow::receiveManuallyChangedName);
+        pManualEditor->exec();
+        disconnect(pManualEditor.get(), &Editor::sendDataToMain, this, &MainWindow::receiveManuallyChangedName);
+        pManualEditor.release();
+    }
+}
+
+void MainWindow::receiveManuallyChangedName(QString newName, int rowChanged)
+{
+    ui->formattedNames->item(rowChanged)->setText(newName);
 }
 
 void MainWindow::readFileData(const QStringList &rFileList)

@@ -30,6 +30,10 @@ private slots:
 
     unsigned long writeNewFiles();
 
+    void launchManualEditor();
+
+    void receiveManuallyChangedName(QString newName, int rowChanged);
+
 signals:
     void send_songs(QStringList& rSelectedSongs);
 
