@@ -20,6 +20,9 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
+        editor.cpp
+        editor.h
+        editor.ui
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
