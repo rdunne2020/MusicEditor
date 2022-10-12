@@ -7,7 +7,8 @@ Editor::Editor(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(this->ui->songNames, &QListWidget::itemDoubleClicked, this, &Editor::editSong);
-    connect(this->ui->songNames, &QListWidget::currentRowChanged, this, &Editor::propagateChange);
+    connect(this->ui->songNames, &QListWidget::currentRowChanged, this, &Editor::getChangedRow);
+    connect(this, &QDialog::accepted, this, &Editor::propagateChange);
 }
 
 void Editor::setupList(const QStringList &formattedNames)
@@ -23,10 +24,19 @@ void Editor::editSong(QListWidgetItem* pUpdatedSong)
     pUpdatedSong->setFlags(pUpdatedSong->flags() | Qt::ItemIsEditable);
 }
 
-void Editor::propagateChange(int rowChanged)
+void Editor::getChangedRow(int rowChanged)
 {
-    QString newSongTitle = ui->songNames->item(rowChanged)->text();
-    emit(sendDataToMain(newSongTitle, rowChanged));
+    _changedRows.push_back(rowChanged);
+}
+
+void Editor::propagateChange()
+{
+    for(auto row : _changedRows)
+    {
+        QString newFileName = ui->songNames->item(row)->text();
+        emit(sendDataToMain(newFileName, row));
+    }
+    _changedRows.clear();
 }
 
 Editor::~Editor()

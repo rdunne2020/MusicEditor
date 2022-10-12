@@ -2,6 +2,7 @@
  * Music Editor: Let's see if this works
  * TODO:
  * Add a logger
+ * Use dialogs to show errors
 ****************************************************************************/
 
 #include "mainwindow.h"
@@ -40,8 +41,12 @@ void MainWindow::launchManualEditor()
     else
     {
         std::unique_ptr<Editor> pManualEditor = std::make_unique<Editor>();
-        // TODO: Make this pass the formatted names, not the ones from the dir, they are wrong
-        pManualEditor->setupList(_filesInDir);
+        QStringList formattedFileNames;
+        for(int i = 0; i < ui->formattedNames->count(); ++i)
+        {
+            formattedFileNames.append(ui->formattedNames->item(i)->text());
+        }
+        pManualEditor->setupList(formattedFileNames);
         connect(pManualEditor.get(), &Editor::sendDataToMain, this, &MainWindow::receiveManuallyChangedName);
         pManualEditor->exec();
         disconnect(pManualEditor.get(), &Editor::sendDataToMain, this, &MainWindow::receiveManuallyChangedName);
@@ -54,27 +59,19 @@ void MainWindow::receiveManuallyChangedName(QString newName, int rowChanged)
     ui->formattedNames->item(rowChanged)->setText(newName);
 }
 
-void MainWindow::readFileData(const QStringList &rFileList)
+QByteArray MainWindow::readFileData(const QString &rFileName)
 {
-    // Allocate the vector of byte arrays
-    _songData.clear();
-    _songData.resize(rFileList.size());
-    // TODO: Under no circumstances can I read the whole directory into memory at once, it's a recipe for disaster
-    // You should read then write only after the program is certain you want to be writing the bytes
-    for(int i = 0; i < rFileList.size();  ++i)
+    // TODO: Clean up path generation, has to be a better way than using + operators
+    QString songName = _songDir.absolutePath() + "/" + rFileName + "." + _fileExt;
+    QFile songData(songName);
+    QByteArray binData;
+    songData.open(QIODevice::ReadOnly);
+    while(!songData.atEnd())
     {
-        // TODO: Clean up path generation, has to be a better way than using + operators
-        QString songName = _songDir.absolutePath() + "/" + rFileList[i] + "." + _fileExt;
-        QFile songData(songName);
-        songData.open(QIODevice::ReadOnly);
-        //std::cout << "Reading in " << rFileList[i].toStdString() << std::endl;
-        std::cout << "Reading in " << songName.toStdString() << std::endl;
-        while(!songData.atEnd())
-        {
-            _songData[i].append(songData.read(sizeof(char)));
-        }
-        std::cout << "Read in " << _songData[i].size() << " bytes for: " << rFileList[i].toStdString() << std::endl;
+        binData.append(songData.read(sizeof(char)));
     }
+    std::cout << "Read in " << binData.size() << " bytes for: " << rFileName.toStdString() << std::endl;
+    return binData;
 }
 
 /*****************************************
@@ -84,7 +81,6 @@ void MainWindow::readFileData(const QStringList &rFileList)
 *****************************************/
 unsigned long MainWindow::writeNewFiles()
 {
-    // TODO: Error handle the directory?
     if(_filesInDir.size() < 1 || ui->formattedNames->count() < 1)
     {
         std::cout << "Open Directory With Music Files in it First" << std::endl;
@@ -112,17 +108,20 @@ unsigned long MainWindow::writeNewFiles()
         unsigned long totalNumMbWritten = 0;
         for(int i = 0; i < ui->formattedNames->count(); ++i)
         {
+            // Get the filename to read the data into memory and write it
+            QString unformattedName = ui->unformattedNames->item(i)->text();
+            QByteArray currentBinaryData = readFileData(unformattedName);
             // TODO: Clean up path generation, has to be a better way than using + operators
             QString songName = saveDir + "/" + ui->formattedNames->item(i)->text() + "." + _fileExt;
-            std::cout << songName.toStdString() << std::endl;
             QFile newSong(songName);
             // Song Failed to write, print out the failure, don't stop the rest of it
             if (!newSong.open(QIODevice::WriteOnly | QIODevice::Text))
             {
                 std::cerr << "Couldn't write new file: " << songName.toStdString() << std::endl;
             }
-            qint64 numBytesWritten = newSong.write(_songData[i]);
-            std::cout << "Wrote " << numBytesWritten << " bytes to " << songName.toStdString();
+            //qint64 numBytesWritten = newSong.write(_songData[i]);
+            qint64 numBytesWritten = newSong.write(currentBinaryData);
+            std::cout << "Wrote " << numBytesWritten << " bytes to " << songName.toStdString() << "\n";
             totalNumMbWritten += (static_cast<double>(numBytesWritten) / 1000000.0);
         }
         return totalNumMbWritten;
@@ -213,8 +212,6 @@ void MainWindow::on_actionOpen_Folder_triggered()
         std::cout << rFile.toStdString() << std::endl;
     }
     _filesInDir = files_in_dir;
-    // Now that we have read in all the files, load their data into memory
-    readFileData(_filesInDir);
     emit(send_songs(_filesInDir));
 }
 

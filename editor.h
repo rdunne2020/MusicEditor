@@ -19,13 +19,15 @@ public:
 
 private slots:
     void editSong(QListWidgetItem* pUpdatedSong);
-    void propagateChange(int rowChanged);
+    void getChangedRow(int rowChanged);
+    void propagateChange();
 
 signals:
     void sendDataToMain(QString newSongName, int songNum);
 
 private:
     Ui::Editor *ui;
+    std::vector<int> _changedRows;
 };
 
 #endif // EDITOR_H
