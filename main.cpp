@@ -14,7 +14,6 @@ void darkMode(QApplication& rApp)
     dark_pal.setColor(QPalette::ToolTipText, QColorConstants::White);
     dark_pal.setColor(QPalette::Text, QColorConstants::White);
     dark_pal.setColor(QPalette::Button, QColor(17, 149, 79));
-    dark_pal.setColor(QPalette::ButtonText, QColorConstants::White);
     dark_pal.setColor(QPalette::BrightText, QColorConstants::Red);
     dark_pal.setColor(QPalette::Link, QColor(42, 130, 218));
     dark_pal.setColor(QPalette::Highlight, QColor(42, 130, 218));

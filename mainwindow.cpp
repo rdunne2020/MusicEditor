@@ -18,9 +18,9 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->saveButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
-    ui->saveAsButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
-    ui->manualButton->setStyleSheet("background-color : rgb(87,87,87); border: 1px solid grey; border-radius: 4px");
+    ui->saveButton->setStyleSheet("background-color: rgb(87,87,87); color: white; border: 1px solid grey; border-radius: 4px");
+    ui->saveAsButton->setStyleSheet("background-color: rgb(87,87,87); color: white; border: 1px solid grey; border-radius: 4px");
+    ui->manualButton->setStyleSheet("background-color: rgb(87,87,87); color: white; border: 1px solid grey; border-radius: 4px");
     connect(ui->saveButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
     connect(ui->saveAsButton, &QPushButton::pressed, this, &MainWindow::writeNewFiles);
     connect(ui->manualButton, &QPushButton::pressed, this, &MainWindow::launchManualEditor);
