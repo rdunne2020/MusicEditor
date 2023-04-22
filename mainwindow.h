@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QFileDialog>
 #include <QRegularExpression>
+#include "flaccontainer.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -43,5 +44,7 @@ private:
     QStringList _filesInDir;
     QStringList _fullFilePath;
     QString _fileExt = "";
+    // Vector that holds in depth info for all flac files read in
+    // std::vector<FlacContainer> _listOfFlacFiles;
 };
 #endif // MAINWINDOW_H

@@ -6,6 +6,8 @@ Editor::Editor(QWidget *parent) :
     ui(new Ui::Editor)
 {
     ui->setupUi(this);
+    // Since the text is white as set in main.cpp, make the edit box black
+    ui->songNames->setStyleSheet("QLineEdit{ background:black; };");
     connect(this->ui->songNames, &QListWidget::itemDoubleClicked, this, &Editor::editSong);
     connect(this->ui->songNames, &QListWidget::currentRowChanged, this, &Editor::getChangedRow);
     connect(this, &QDialog::accepted, this, &Editor::propagateChange);
