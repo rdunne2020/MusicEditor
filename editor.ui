@@ -38,6 +38,9 @@
      <height>741</height>
     </rect>
    </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
   </widget>
  </widget>
  <resources/>

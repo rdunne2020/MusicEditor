@@ -8,6 +8,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "editor.h"
+#include "songlistobject.h"
 #include <iostream>
 #include <QDir>
 #include <QFile>
@@ -131,9 +132,9 @@ unsigned long MainWindow::writeNewFiles()
 void MainWindow::editTitle(QString &rSongName, int trackNum, bool continuous)
 {
     // Capitalize the start of every appropriate word, else lowercase it
-    QStringList wordsInTitle = rSongName.split(" ", Qt::SplitBehaviorFlags::SkipEmptyParts);
-    // Remove the first element since it's a bad track#
-    wordsInTitle.removeAt(0);
+    // TODO: Let user input the file separators and create the regex string from that
+    QRegularExpression split_re("( |_)");
+    QStringList wordsInTitle = rSongName.split(split_re, Qt::SplitBehaviorFlags::SkipEmptyParts);
 
     bool alreadyHasArrow = false;
 
@@ -165,8 +166,8 @@ void MainWindow::editTitle(QString &rSongName, int trackNum, bool continuous)
         }
     }
     // Increase the trackNum by one to start from 1
-    QString wc = QString::fromStdString(std::to_string(trackNum+1));
-    wordsInTitle.prepend(wc);
+    // QString wc = QString::fromStdString(std::to_string(trackNum+1));
+    // wordsInTitle.prepend(wc);
 
     if(continuous && !alreadyHasArrow)
     {
@@ -201,14 +202,18 @@ void MainWindow::on_actionOpen_Folder_triggered()
     QDir directory_selected = QFileDialog::getExistingDirectory(this);
     std::cout << "Path: " << directory_selected.absolutePath().toStdString() << std::endl;
     QStringList audio_file_filter;
-    audio_file_filter << "*.mp3" << "*.alac" << "*.flac" << "*.wav" << "*.m4a";
+    // TODO: Add Support for more filetypes, but right now just flac, see TODO in flaccontainer.
+    audio_file_filter << "*.flac";
     QStringList files_in_dir = directory_selected.entryList(audio_file_filter, QDir::Files);
     _songDir = directory_selected;
     for(auto& rFile : files_in_dir)
     {
+        // Split file names
         QStringList tmpSplit = rFile.split(".");
         _fileExt = tmpSplit.at(1);
         rFile = tmpSplit.at(0);
+
+        // Setting it to metadata title if it exists rFile = tmpSplit.at(0);
         std::cout << rFile.toStdString() << std::endl;
     }
     _filesInDir = files_in_dir;
@@ -226,22 +231,75 @@ void MainWindow::fill_fileList(QStringList& rFilesForList)
     // Set the song continuation to off for all the songs by default
     for(int i = 0; i < ui->unformattedNames->count(); ++i)
     {
-        QListWidgetItem *pSongName = ui->unformattedNames->item(i);
-        if(pSongName)
+        QListWidgetItem* pSongItem = ui->unformattedNames->item(i);
+        // Create the FlacContainers for each song
+        FlacContainer next_song((_songDir.absolutePath().toStdString() + "/" +
+            rFilesForList.at(i).toStdString() + "." + _fileExt.toStdString()));
+        bool valid_flac = true;
+        try
         {
-            QRegularExpressionMatch isContinuous = continuous.match(pSongName->text());
-            // We only want the user to be able to set continuous for files without arrows
-            if(! isContinuous.hasMatch())
-            {
-                pSongName->setCheckState(Qt::Unchecked);
-            }
-
-            QString formattedName = pSongName->text();
-            editTitle(formattedName, i, pSongName->checkState());
-            formattedNames.push_back(formattedName);
+            next_song.set_vorbis_block();
         }
+        catch (const FlacException& e)
+        {
+            valid_flac = false;
+            std::cerr << e.what() << std::endl;
+        }
+        if (valid_flac)
+        {
+            std::string flac_title = next_song.get_metadata_tag("TITLE").second;
+            std::string song_artist = next_song.get_metadata_tag("ARTIST").second;
+            std::string track_num = next_song.get_metadata_tag("TRACKNUMBER").second;
+            std::string disc_num = next_song.get_metadata_tag("DISCNUMBER").second;
+            next_song._title = flac_title;
+            next_song._artist = song_artist;
+            if (track_num != "NULL" && disc_num != "NULL")
+            {
+                next_song._track_num = std::stoi(track_num);
+                next_song._disc_num = std::stoi(disc_num);
+            }
+            else
+            {
+                // Use i+1 to account for zero indexing
+                next_song._track_num = i+1;
+                next_song._disc_num = 0;
+            }
+        }
+        QString qSongName;
+        if(next_song._title != "NULL")
+        {
+            qSongName = next_song._title.c_str();
+            
+        }
+        // FLAC Title tag wasn't read, use the raw file name
+        else
+        {
+            qSongName = rFilesForList.at(i);
+        }
+        QRegularExpressionMatch isContinuous = continuous.match(qSongName);
+        bool continuous_song = true;
+        // We only want the user to be able to set continuous for files without arrows
+        if (!isContinuous.hasMatch())
+        {
+            pSongItem->setCheckState(Qt::Unchecked);
+            continuous_song = false;
+        }
+
+        editTitle(qSongName, i, continuous_song);
+        SongListObject* pSong_container = new SongListObject(ui->formattedNames);
+        pSong_container->setSongName(qSongName);
+        pSong_container->setSongNum(QString::number(next_song._track_num));
+        pSong_container->setDiscNum(QString::number(next_song._disc_num));
+        pSong_container->setArtist(QString(next_song._artist.c_str()));
+        pSong_container->flac_data = next_song;
+        
+        // This is how to use a custom widget inside a QListWidget
+        QListWidgetItem* pTmpSongItem = new QListWidgetItem();
+        QSize widget_size = QSize(pSong_container->width(),pSong_container->height());
+        pTmpSongItem->setSizeHint(widget_size);
+        ui->formattedNames->addItem(pTmpSongItem);
+        ui->formattedNames->setItemWidget(pTmpSongItem, pSong_container);
     }
-    ui->formattedNames->addItems(formattedNames);
 }
 
 void MainWindow::on_actionRefresh_triggered()

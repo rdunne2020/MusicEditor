@@ -15,6 +15,10 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Gui)
 
+find_library(FLAC++ NAMES libFLAC++.so)
+find_library(FLAC NAMES libFLAC.so)
+find_library(OGG NAMES libogg.so)
+
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -23,6 +27,11 @@ set(PROJECT_SOURCES
         editor.cpp
         editor.h
         editor.ui
+        flaccontainer.cpp
+        flaccontainer.h
+        songlistobject.h
+        songlistobject.cpp
+        songlistobject.ui
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -50,6 +59,7 @@ endif()
 
 target_link_libraries(MusicEditor PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(MusicEditor PRIVATE Qt${QT_VERSION_MAJOR}::Gui)
+target_link_libraries(MusicEditor PUBLIC ${FLAC} ${FLAC++} ${OGG})
 
 set_target_properties(MusicEditor PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

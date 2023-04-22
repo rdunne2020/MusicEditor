@@ -171,7 +171,7 @@
         <item>
          <widget class="QLabel" name="label">
           <property name="text">
-           <string>New File Names</string>
+           <string>New File Names and Track Nums</string>
           </property>
          </widget>
         </item>
@@ -213,7 +213,7 @@
      <x>0</x>
      <y>0</y>
      <width>1318</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
